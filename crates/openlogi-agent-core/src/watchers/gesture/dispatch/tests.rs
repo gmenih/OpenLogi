@@ -93,6 +93,8 @@ fn click_plan(hold: Option<(ButtonId, Action)>, click: &(ButtonId, Action)) -> D
         sensor_dpi: Some(Dpi::new(1000)),
         zoom_sensitivity: ZoomSensitivity::DEFAULT,
         invert_pan: false,
+        zoom_horizontal: false,
+        hold_click_bindings: BTreeMap::new(),
     }
 }
 

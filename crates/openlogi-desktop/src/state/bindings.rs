@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use gpui::App;
-use openlogi_core::binding::{Action, Binding, ButtonId, GestureDirection};
+use openlogi_core::binding::{
+    Action, Binding, ButtonId, GestureDirection, HoldBinding, default_binding,
+};
 use openlogi_core::bindings::{bindings_for, hidpp_gesture_maps_for, oshook_gestures_for};
 use openlogi_core::config::{Config, KeyTrigger};
 use tracing::debug;
@@ -220,6 +222,14 @@ impl AppState {
             // replaces the whole button — which is exactly what picking one
             // action means, and why gesture mode is not offered in this scope.
             Some(app) => config.set_per_app_binding(&key, &app, button, Some(action)),
+            // A hold-mode gesture occupies the button only while it is held,
+            // so it keeps the ordinary press rather than spending it on the
+            // gesture's own fallback.
+            None if action.is_hold_mode() => config.set_binding(
+                &key,
+                button,
+                Binding::Hold(HoldBinding::new(default_binding(button), action)),
+            ),
             None => config.set_binding(&key, button, Binding::Single(action)),
         });
         // The agent owns the hook; have it rebuild its live map from config.

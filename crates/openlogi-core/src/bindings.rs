@@ -17,9 +17,11 @@ use crate::config::Config;
 ///
 /// This projection is for one-shot consumers such as thumb-wheel rotation and
 /// the GUI. Lifecycle-aware button paths use [`button_bindings_for`] so a long
-/// press keeps both actions. `Binding::Gesture` is projected to its
-/// `click_action()`; per-direction swipes are dispatched via the separate
-/// [`hidpp_gesture_maps_for`] / [`oshook_gestures_for`] maps.
+/// press keeps both actions. Each shape is projected to its
+/// `display_action()`: `Binding::Gesture` to its click, with per-direction
+/// swipes dispatched via the separate [`hidpp_gesture_maps_for`] /
+/// [`oshook_gestures_for`] maps, and `Binding::Hold` to its held gesture,
+/// which is the half the user picked.
 #[must_use]
 pub fn bindings_for(
     config: &Config,
@@ -28,7 +30,7 @@ pub fn bindings_for(
 ) -> BTreeMap<ButtonId, Action> {
     button_bindings_for(config, config_key, app_bundle)
         .into_iter()
-        .map(|(button, binding)| (button, binding.click_action()))
+        .map(|(button, binding)| (button, binding.display_action()))
         .collect()
 }
 
@@ -90,7 +92,7 @@ pub fn hidpp_gesture_maps_for(
             binding.fill_gesture_defaults();
             match binding {
                 Binding::Gesture(map) => Some((button, map)),
-                Binding::Single(_) | Binding::LongPress(_) => None,
+                Binding::Single(_) | Binding::LongPress(_) | Binding::Hold(_) => None,
             }
         })
         .collect()
@@ -111,7 +113,37 @@ pub fn hold_mode_bindings_for(
         .into_iter()
         .filter_map(|(button, binding)| match binding {
             Binding::Single(action) if action.is_hold_mode() => Some((button, action)),
-            Binding::Single(_) | Binding::Gesture(_) | Binding::LongPress(_) => None,
+            Binding::Hold(binding) if binding.hold().is_hold_mode() => {
+                Some((button, binding.hold().clone()))
+            }
+            Binding::Single(_) | Binding::Gesture(_) | Binding::LongPress(_) | Binding::Hold(_) => {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Click actions for buttons bound as [`Binding::Hold`], keyed by button.
+///
+/// A hold-mode press that never cleared the drag deadzone fires this instead
+/// of the hold gesture's own fallback. Buttons bound with the plain
+/// [`Binding::Single`] hold shape are absent, which is what keeps that shape's
+/// existing click behaviour untouched.
+#[must_use]
+pub fn hold_click_bindings_for(
+    config: &Config,
+    config_key: Option<&str>,
+    app_bundle: Option<&str>,
+) -> BTreeMap<ButtonId, Action> {
+    button_bindings_for(config, config_key, app_bundle)
+        .into_iter()
+        .filter_map(|(button, binding)| match binding {
+            Binding::Hold(hold) if hold.hold().is_hold_mode() => {
+                Some((button, hold.click().clone()))
+            }
+            Binding::Single(_) | Binding::Gesture(_) | Binding::LongPress(_) | Binding::Hold(_) => {
+                None
+            }
         })
         .collect()
 }
@@ -154,7 +186,7 @@ pub fn oshook_gestures_for(
         .filter(|(id, _)| id.is_os_hook_button())
         .filter_map(|(id, binding)| match binding {
             Binding::Gesture(map) => Some((id, map)),
-            Binding::Single(_) | Binding::LongPress(_) => None,
+            Binding::Single(_) | Binding::LongPress(_) | Binding::Hold(_) => None,
         })
         .collect()
 }

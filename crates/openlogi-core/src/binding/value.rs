@@ -44,6 +44,40 @@ impl LongPressBinding {
     }
 }
 
+/// A hold-mode button that keeps an ordinary click.
+///
+/// `hold` is the continuous gesture the pointer drives while the button is
+/// down ([`Action::is_hold_mode`]); `click` is what a press that never
+/// travelled fires instead. Without this shape a hold-mode button spends its
+/// click on a fixed fallback, so a trackball cannot zoom on Forward and still
+/// navigate forward.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HoldBinding {
+    click: Action,
+    hold: Action,
+}
+
+impl HoldBinding {
+    /// Pair the no-travel click action with the held gesture.
+    #[must_use]
+    pub const fn new(click: Action, hold: Action) -> Self {
+        Self { click, hold }
+    }
+
+    /// Action fired by a press that never cleared the drag deadzone.
+    #[must_use]
+    pub const fn click(&self) -> &Action {
+        &self.click
+    }
+
+    /// The continuous gesture driven while the button is held.
+    #[must_use]
+    pub const fn hold(&self) -> &Action {
+        &self.hold
+    }
+}
+
 /// What a single rebindable [`ButtonId`](crate::binding::ButtonId) does: one
 /// immediate [`Action`], an independent short/long action pair, or — for a
 /// raw-XY-capable button placed in gesture mode — a per-[`GestureDirection`]
@@ -59,11 +93,13 @@ impl LongPressBinding {
 /// for the payload variants), [`Gesture`](Binding::Gesture) serializes as a
 /// table keyed by [`GestureDirection`] names (`Up`/`Down`/`Left`/`Right`/
 /// `Click`), and [`LongPress`](Binding::LongPress) as the structurally distinct
-/// `{ short = ..., long = ... }` table.
+/// `{ short = ..., long = ... }` table, and [`Hold`](Binding::Hold) as the
+/// equally distinct `{ click = ..., hold = ... }` table.
 ///
 /// The arms are disambiguated structurally: action variant names and gesture
 /// direction names have zero overlap, while a long press requires both
-/// lowercase `short` and `long` fields and rejects unknown fields. The
+/// lowercase `short` and `long` fields, a hold both lowercase `click` and
+/// `hold` fields, and each rejects unknown fields. The
 /// `binding_untagged_*` tests guard these routing invariants.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -76,6 +112,8 @@ pub enum Binding {
     Gesture(BTreeMap<GestureDirection, Action>),
     /// Independent release-before-threshold and threshold actions.
     LongPress(LongPressBinding),
+    /// A continuous hold-mode gesture that keeps an ordinary click.
+    Hold(HoldBinding),
 }
 
 impl Binding {
@@ -95,6 +133,21 @@ impl Binding {
                 .cloned()
                 .unwrap_or(Action::None),
             Binding::LongPress(binding) => binding.short().clone(),
+            Binding::Hold(binding) => binding.click().clone(),
+        }
+    }
+
+    /// The action that names this binding in the UI.
+    ///
+    /// Identical to [`click_action`](Self::click_action) except for
+    /// [`Hold`](Binding::Hold), whose held gesture is what the user chose and
+    /// what the button should read as; its click is the ordinary press the
+    /// gesture leaves intact.
+    #[must_use]
+    pub fn display_action(&self) -> Action {
+        match self {
+            Binding::Hold(binding) => binding.hold().clone(),
+            Binding::Single(_) | Binding::Gesture(_) | Binding::LongPress(_) => self.click_action(),
         }
     }
 
@@ -103,7 +156,7 @@ impl Binding {
     #[must_use]
     pub fn direction_action(&self, direction: GestureDirection) -> Option<&Action> {
         match self {
-            Binding::Single(_) | Binding::LongPress(_) => None,
+            Binding::Single(_) | Binding::LongPress(_) | Binding::Hold(_) => None,
             Binding::Gesture(map) => map.get(&direction),
         }
     }
@@ -123,6 +176,7 @@ impl Binding {
     pub fn is_hold_mode(&self) -> bool {
         match self {
             Binding::Single(action) => action.is_hold_mode(),
+            Binding::Hold(binding) => binding.hold().is_hold_mode(),
             Binding::Gesture(_) | Binding::LongPress(_) => false,
         }
     }
@@ -137,6 +191,7 @@ impl Binding {
         let click = match self {
             Binding::Single(action) => action.clone(),
             Binding::LongPress(binding) => binding.short().clone(),
+            Binding::Hold(binding) => binding.click().clone(),
             Binding::Gesture(_) => return,
         };
         *self = Binding::Gesture(BTreeMap::from([(GestureDirection::Click, click)]));

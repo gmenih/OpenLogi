@@ -292,6 +292,16 @@ impl AppState {
         self.persist_and_reload("pan direction");
     }
 
+    /// Set whether hold-mode zoom reads sideways travel instead of vertical.
+    pub fn set_zoom_horizontal(&mut self, horizontal: bool) {
+        if self.config.app_settings.zoom_horizontal == horizontal {
+            return;
+        }
+        self.config
+            .edit(|config| config.app_settings.zoom_horizontal = horizontal);
+        self.persist_and_reload("zoom axis");
+    }
+
     pub fn set_auto_download_assets(&mut self, enabled: bool) {
         if self.config.app_settings.auto_download_assets == enabled {
             return;

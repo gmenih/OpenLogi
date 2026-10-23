@@ -18,7 +18,8 @@ use std::sync::Arc;
 
 use openlogi_core::binding::{Action, Binding, ButtonId, GestureDirection, default_binding};
 use openlogi_core::bindings::{
-    button_bindings_for, hidpp_gesture_maps_for, hold_mode_bindings_for, oshook_gestures_for,
+    button_bindings_for, hidpp_gesture_maps_for, hold_click_bindings_for, hold_mode_bindings_for,
+    oshook_gestures_for,
 };
 use openlogi_core::config::{Config, ThumbwheelSensitivity, ZoomSensitivity};
 use openlogi_core::device_order::PhysicalDeviceKey;
@@ -74,6 +75,10 @@ pub struct DispatchPlan {
     /// Hold-mode (`Pan` / `Zoom`) button bindings. The OS-hook map must omit
     /// these keys so HID++ is the only dispatch path.
     pub hold_bindings: BTreeMap<ButtonId, Action>,
+    /// Click actions for buttons bound with the `{ click, hold }` shape, fired
+    /// when a hold is released without ever clearing the drag deadzone. Absent
+    /// for the plain hold shape, which keeps its own fallback.
+    pub hold_click_bindings: BTreeMap<ButtonId, Action>,
     /// Live sensor DPI, for converting raw counts to millimetres. Unlike
     /// [`CaptureSpec::sensor_dpi`] this tracks the real reading, so the felt
     /// speed of a pan is right on a device whose sensor is not at the
@@ -83,6 +88,9 @@ pub struct DispatchPlan {
     pub zoom_sensitivity: ZoomSensitivity,
     /// App-wide hold-mode pan direction. `false` is content-follows-hand.
     pub invert_pan: bool,
+    /// Whether this device's hold-mode zoom reads sideways travel instead of
+    /// vertical (app-wide preference).
+    pub zoom_horizontal: bool,
 }
 
 /// Host facts that decide whether hold-mode raw-XY may be armed.
@@ -206,6 +214,7 @@ pub fn plan_for_device_with(
     // target below derives the CIDs to divert from this map's keys).
     let gesture_bindings = hidpp_gesture_maps_for(config, Some(config_key));
     let hold_bindings = hold_mode_bindings_for(config, Some(config_key), app);
+    let hold_click_bindings = hold_click_bindings_for(config, Some(config_key), app);
     let resolved_dpi = hold::resolve_hold_sensor_dpi(ability.sensor_dpi, config.dpi(config_key));
     hold::warn_if_hold_dpi_is_approximate(
         config_key,
@@ -307,9 +316,11 @@ pub fn plan_for_device_with(
             side_gesture_bindings,
             thumbwheel_sensitivity,
             hold_bindings,
+            hold_click_bindings,
             sensor_dpi,
             zoom_sensitivity: config.app_settings.zoom_sensitivity,
             invert_pan: config.app_settings.invert_pan,
+            zoom_horizontal: config.app_settings.zoom_horizontal,
         },
     }
 }

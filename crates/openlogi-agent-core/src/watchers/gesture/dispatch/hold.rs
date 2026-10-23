@@ -74,6 +74,7 @@ impl HoldKind {
 struct HoldFeel {
     zoom_sensitivity: ZoomSensitivity,
     invert_pan: bool,
+    zoom_horizontal: bool,
 }
 
 /// Per-session slot. [`Self::Closed`] is terminal for that capture epoch.
@@ -127,6 +128,7 @@ impl HoldSessions {
                 feel: HoldFeel {
                     zoom_sensitivity: plan.zoom_sensitivity,
                     invert_pan: plan.invert_pan,
+                    zoom_horizontal: plan.zoom_horizontal,
                 },
             },
         );
@@ -170,7 +172,15 @@ impl HoldSessions {
                 (px != 0.0 || py != 0.0).then_some(HoldCommand::Pan { dx: px, dy: py })
             }
             HoldKind::Zoom => {
-                let amount = zoom_magnification(dy, dpi, feel.zoom_sensitivity);
+                // `zoom_magnification` negates its input, so the axis that
+                // means "zoom in" has to be handed over already signed:
+                // up is -y, and right is +x.
+                let travel = if feel.zoom_horizontal {
+                    dx.saturating_neg()
+                } else {
+                    dy
+                };
+                let amount = zoom_magnification(travel, dpi, feel.zoom_sensitivity);
                 (amount != 0.0).then_some(HoldCommand::Zoom { amount })
             }
         }
@@ -291,10 +301,12 @@ fn pan_pixels(dx: i16, dy: i16, dpi: Dpi) -> (f32, f32) {
     )
 }
 
-/// Positive amount zooms in. Raw-XY `+y` is down, so a negative `dy` (drag
-/// toward the user) is a zoom-in.
-fn zoom_magnification(dy: i16, dpi: Dpi, sensitivity: ZoomSensitivity) -> f32 {
-    -millimetres(dy, dpi) * ZOOM_MAGNIFICATION_PER_MM * sensitivity.zoom_multiplier()
+/// Positive amount zooms in. `travel` is the already-signed movement along
+/// whichever axis the user zooms on: raw-XY `+y` is down, so a negative `dy`
+/// (drag toward the user) is a zoom-in, and the horizontal caller negates
+/// `dx` so that dragging right is one too.
+fn zoom_magnification(travel: i16, dpi: Dpi, sensitivity: ZoomSensitivity) -> f32 {
+    -millimetres(travel, dpi) * ZOOM_MAGNIFICATION_PER_MM * sensitivity.zoom_multiplier()
 }
 
 #[cfg(test)]

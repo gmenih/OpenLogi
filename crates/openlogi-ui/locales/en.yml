@@ -322,6 +322,8 @@ _version: 1
 "Scales how far pinch zoom magnifies for a given amount of pointer travel.": "Scales how far pinch zoom magnifies for a given amount of pointer travel."
 "Invert pan direction": "Invert pan direction"
 "Move the view instead of the content while panning. Off matches a trackpad, where content follows your hand.": "Move the view instead of the content while panning. Off matches a trackpad, where content follows your hand."
+"Zoom sideways": "Zoom sideways"
+"Zoom by dragging left and right instead of up and down. Suits a trackball, whose thumb travels sideways.": "Zoom by dragging left and right instead of up and down. Suits a trackball, whose thumb travels sideways."
 "Device offline — reconnect to read DPI range": "Device offline — reconnect to read DPI range"
 "Loading device DPI range…": "Loading device DPI range…"
 "DPI read failed: %{message}": "DPI read failed: %{message}"

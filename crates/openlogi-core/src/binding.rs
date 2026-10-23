@@ -40,4 +40,4 @@ pub use swipe::{
     GESTURE_HOLD_FOR_SWIPE, GESTURE_SWIPE_DEADZONE, GESTURE_SWIPE_THRESHOLD, HOLD_DRAG_DEADZONE_MM,
     HOLD_STALE, StreamRelease, SwipeAccumulator, detect_swipe, hold_drag_threshold_counts,
 };
-pub use value::{Binding, LONG_PRESS_THRESHOLD, LongPressBinding};
+pub use value::{Binding, HoldBinding, LONG_PRESS_THRESHOLD, LongPressBinding};

@@ -320,9 +320,24 @@ impl InputDispatcher {
             CapturedInput::HoldEnd { button, release } => self.holds.end(session, button, release),
             _ => unreachable!("dispatch_hold is only called for Hold*"),
         };
-        if let Some(command) = command {
-            hold::emit(command);
+        let Some(command) = command else {
+            return;
+        };
+        // A `{ click, hold }` binding spends a no-travel release on its own
+        // click action. The hold shape without one keeps smart zoom, which is
+        // the only fallback a bare `Zoom` action can have.
+        if let (hold::HoldCommand::SmartZoom, CapturedInput::HoldEnd { button, .. }) =
+            (command, input)
+            && let Some(click) = plan.hold_click_bindings.get(&button)
+        {
+            self.outputs.actions.dispatch_hidpp_button_pulse(
+                session,
+                button,
+                Some(&Binding::Single(click.clone())),
+            );
+            return;
         }
+        hold::emit(command);
     }
 }
 

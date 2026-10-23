@@ -63,6 +63,7 @@ pub(super) fn general_page(
             )),
         )
         .item(invert_pan_item())
+        .item(zoom_horizontal_item())
         .item(launch_at_login_item());
 
     // Switched off under System Settings › Login Items: nothing can start
@@ -129,6 +130,25 @@ fn smooth_scrolling_item() -> SettingItem {
     )
     .description(tr!(
         "Animate traditional mouse-wheel input while leaving trackpad scrolling unchanged."
+    ))
+}
+
+/// The hold-mode zoom axis switch.
+fn zoom_horizontal_item() -> SettingItem {
+    SettingItem::new(
+        tr!("Zoom sideways"),
+        SettingField::switch(
+            |cx| AppState::try_read(cx).is_some_and(|s| s.app_settings().zoom_horizontal),
+            |enabled, cx| {
+                AppState::update(cx, move |state, cx| {
+                    state.set_zoom_horizontal(enabled);
+                    cx.emit(StateEvent::SettingsChanged);
+                });
+            },
+        ),
+    )
+    .description(tr!(
+        "Zoom by dragging left and right instead of up and down. Suits a trackball, whose thumb travels sideways."
     ))
 }
 

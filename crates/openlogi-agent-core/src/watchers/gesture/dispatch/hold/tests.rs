@@ -30,6 +30,8 @@ fn plan(button: ButtonId, action: Action, dpi: u16) -> DispatchPlan {
         sensor_dpi: Some(Dpi::new(dpi)),
         zoom_sensitivity: ZoomSensitivity::DEFAULT,
         invert_pan: false,
+        zoom_horizontal: false,
+        hold_click_bindings: BTreeMap::new(),
     }
 }
 

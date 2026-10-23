@@ -259,6 +259,12 @@ pub struct AppSettings {
     /// dragging a scrollbar does.
     #[serde(default)]
     pub invert_pan: bool,
+    /// Whether hold-mode zoom reads sideways travel instead of vertical. Off
+    /// by default, matching a trackpad pinch, where the fingers separate along
+    /// the drag axis a mouse moves most freely. On suits a trackball, whose
+    /// thumb arc is horizontal.
+    #[serde(default)]
+    pub zoom_horizontal: bool,
     /// Light/dark appearance preference. Defaults to following the OS.
     #[serde(default)]
     pub appearance: Appearance,
@@ -541,6 +547,7 @@ impl Default for AppSettings {
             vertical_scroll_sensitivity: VerticalScrollSensitivity::DEFAULT,
             zoom_sensitivity: ZoomSensitivity::DEFAULT,
             invert_pan: false,
+            zoom_horizontal: false,
             auto_download_assets: true,
             asset_source: AssetSourcePreference::Automatic,
             language: None,
